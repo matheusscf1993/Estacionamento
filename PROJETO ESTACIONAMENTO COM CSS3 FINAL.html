@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Estacionamento</title>
+    <style>
+        /* Estilo para o corpo (body) */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0; /* Fundo cinza claro */
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Estilo para o cabeçalho (h1) */
+        h1 {
+            color: #3498db; /* Azul */
+            text-align: center;
+            padding: 20px 0;
+            margin: 0;
+        }
+
+        /* Estilo para os contêineres de seção (div) */
+        .section {
+            background-color: #ffffff; /* Fundo branco */
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 800px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Estilo para os títulos das seções (h2) */
+        h2 {
+            color: #e74c3c; /* Vermelho */
+            margin-top: 0;
+        }
+
+        /* Estilo para as tabelas */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #95a5a6; /* Cinza */
+            color: white;
+        }
+
+        /* Estilo para os formulários */
+        form {
+            margin-top: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        /* Estilo para os botões */
+        button {
+            background-color: #2ecc71; /* Verde */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button.edit, button.delete {
+            background-color: #f1c40f; /* Amarelo */
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sistema de Estacionamento</h1>
+
+    <div class="section">
+        <!-- Formulário para Cadastro de Veículo (Create) -->
+        <h2>Cadastro de Veículo</h2>
+        <p>Vagas Disponíveis: <span id="vagas-disponiveis">10</span></p>
+        <form id="create-form">
+            <label for="placa">Placa do Veículo (AAA-9999 ou AAA9A99):</label>
+            <input type="text" id="placa" pattern="[A-Z]{3}-\d{4}|[A-Z]{3}\d[A-Z]\d{2}" required>
+            <label for="modelo">Modelo do Veículo:</label>
+            <input type="text" id="modelo" required>
+            <label for="tipo">Tipo de Veículo:</label>
+            <select id="tipo">
+                <option value="carro">Carro</option>
+                <option value="moto">Moto</option>
+                <option value="caminhao">Caminhão</option>
+            </select>
+            <button type="submit">Cadastrar</button>
+        </form>
+    </div>
+
+    <div class="section">
+        <!-- Lista de Veículos Estacionados (Read) -->
+        <h2>Veículos Estacionados</h2>
+        <table id="veiculos-table">
+            <thead>
+                <tr>
+                    <th>Placa</th>
+                    <th>Modelo</th>
+                    <th>Tipo</th>
+                    <th>Entrada</th>
+                    <th>Saída</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody id="veiculos-list"></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <!-- Formulário para Saída de Veículo (Delete) -->
+        <h2>Saída de Veículo</h2>
+        <form id="delete-form">
+            <label for="saida-placa">Placa do Veículo:</label>
+            <input type="text" id="saida-placa" pattern="[A-Z]{3}-\d{4}|[A-Z]{3}\d[A-Z]\d{2}">
+            <button type="submit">Registrar Saída</button>
+        </form>
+
+        <!-- Formulário para Editar Cadastro de Veículo (Update) -->
+        <h2>Editar Cadastro de Veículo</h2>
+        <form id="update-form" style="display: none;">
+            <input type="hidden" id="edit-placa">
+            <label for="edit-modelo">Novo Modelo do Veículo:</label>
+            <input type="text" id="edit-modelo" required>
+            <label for="edit-tipo">Novo Tipo de Veículo:</label>
+            <select id="edit-tipo">
+                <option value="carro">Carro</option>
+                <option value="moto">Moto</option>
+                <option value="caminhao">Caminhão</option>
+            </select>
+            <button type="submit">Salvar</button>
+            <button type="button" id="cancel-edit">Cancelar</button>
+        </form>
+    </div>
+
+    <!-- Função JavaScript para gerenciar o Sistema de Estacionamento -->
+    <script>
+        // Limite de vagas (fixo)
+        const limiteVagas = 10;
+
+        // Recupera os dados dos veículos armazenados no armazenamento local do navegador
+        let veiculos = JSON.parse(localStorage.getItem('veiculos')) || [];
+
+        // Função para criar um novo registro de veículo
+        document.getElementById('create-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (veiculos.length < limiteVagas) {
+                const placa = document.getElementById('placa').value;
+                const modelo = document.getElementById('modelo').value;
+                const tipo = document.getElementById('tipo').value;
+                const entradaHora = new Date().toLocaleString();
+
+                // Verifica se a placa já está cadastrada
+                const veiculoExistente = veiculos.find(veiculo => veiculo.placa === placa && !veiculo.saidaHora);
+                if (!veiculoExistente) {
+                    veiculos.push({ placa, modelo, tipo, entradaHora, saidaHora: '' });
+
+                    // Atualiza os dados no armazenamento local do navegador
+                    localStorage.setItem('veiculos', JSON.stringify(veiculos));
+
+                    updateVagasDisponiveis();
+                    updateVeiculosList();
+                    document.getElementById('placa').value = '';
+                    document.getElementById('modelo').value = '';
+                } else {
+                    alert('Placa já cadastrada e veículo ainda está estacionado.');
+                }
+            } else {
+                alert('Limite de vagas atingido. Não é possível cadastrar mais veículos.');
+            }
+        });
+
+        // Função para registrar a saída de um veículo
+        document.getElementById('delete-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const placa = document.getElementById('saida-placa').value;
+            const veiculo = veiculos.find(veiculo => veiculo.placa === placa && !veiculo.saidaHora);
+            if (veiculo) {
+                const saidaHora = new Date().toLocaleString();
+                veiculo.saidaHora = saidaHora;
+
+                // Atualiza os dados no armazenamento local do navegador
+                localStorage.setItem('veiculos', JSON.stringify(veiculos));
+
+                updateVagasDisponiveis();
+                updateVeiculosList();
+                document.getElementById('saida-placa').value = '';
+            } else {
+                alert('Veículo não encontrado ou já saiu.');
+            }
+        });
+
+        // Função para preencher o formulário de edição com os dados do veículo
+        function prepareUpdateForm(placa) {
+            const veiculo = veiculos.find(veiculo => veiculo.placa === placa && !veiculo.saidaHora);
+            if (veiculo) {
+                document.getElementById('edit-placa').value = placa;
+                document.getElementById('edit-modelo').value = veiculo.modelo;
+                document.getElementById('edit-tipo').value = veiculo.tipo;
+                document.getElementById('update-form').style.display = 'block';
+            }
+        }
+
+        // Função para salvar as alterações nos dados de um veículo
+        document.getElementById('update-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const placa = document.getElementById('edit-placa').value;
+            const novoModelo = document.getElementById('edit-modelo').value;
+            const novoTipo = document.getElementById('edit-tipo').value;
+            const veiculo = veiculos.find(veiculo => veiculo.placa === placa && !veiculo.saidaHora);
+            if (veiculo) {
+                veiculo.modelo = novoModelo;
+                veiculo.tipo = novoTipo;
+
+                // Atualiza os dados no armazenamento local do navegador
+                localStorage.setItem('veiculos', JSON.stringify(veiculos));
+
+                updateVeiculosList();
+                document.getElementById('update-form').style.display = 'none';
+            }
+        });
+
+        // Função para cancelar a edição de dados de um veículo
+        document.getElementById('cancel-edit').addEventListener('click', function () {
+            document.getElementById('update-form').style.display = 'none';
+        });
+
+        // Função para excluir um veículo da lista
+        function excluirVeiculo(placa) {
+            const index = veiculos.findIndex(veiculo => veiculo.placa === placa && !veiculo.saidaHora);
+            if (index !== -1) {
+                veiculos.splice(index, 1);
+
+                // Atualiza os dados no armazenamento local do navegador
+                localStorage.setItem('veiculos', JSON.stringify(veiculos));
+
+                updateVagasDisponiveis();
+                updateVeiculosList();
+            }
+        }
+
+        // Função para atualizar a lista de veículos estacionados
+        function updateVeiculosList() {
+            const veiculosList = document.getElementById('veiculos-list');
+            veiculosList.innerHTML = '';
+            veiculos.forEach(veiculo => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${formatarPlaca(veiculo.placa)}</td>
+                    <td>${veiculo.modelo}</td>
+                    <td>${veiculo.tipo}</td>
+                    <td>${veiculo.entradaHora}</td>
+                    <td>${veiculo.saidaHora || 'Em andamento'}</td>
+                    <td>
+                        <button class="edit" onclick="prepareUpdateForm('${veiculo.placa}')">Editar</button>
+                        <button class="delete" onclick="excluirVeiculo('${veiculo.placa}')">Excluir</button>
+                    </td>
+                `;
+                veiculosList.appendChild(tr);
+            });
+        }
+
+        // Função para atualizar o número de vagas disponíveis
+        function updateVagasDisponiveis() {
+            document.getElementById('vagas-disponiveis').textContent = limiteVagas - veiculos.filter(veiculo => !veiculo.saidaHora).length;
+        }
+
+        // Função para formatar a placa no formato correto
+        function formatarPlaca(placa) {
+            const placaFormatoAntigo = placa.match(/[A-Z]{3}-\d{4}/);
+            const placaFormatoNovo = placa.match(/[A-Z]{3}\d[A-Z]\d{2}/);
+
+            if (placaFormatoAntigo) {
+                return placaFormatoAntigo[0];
+            } else if (placaFormatoNovo) {
+                return placaFormatoNovo[0];
+            } else {
+                return placa;
+            }
+        }
+
+        // Inicializa a lista de veículos na página
+        updateVagasDisponiveis();
+        updateVeiculosList();
+    </script>
+</body>
+</html>
