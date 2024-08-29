@@ -66,6 +66,7 @@
         }
 
         input[type="text"],
+        input[type="number"],
         select {
             width: 100%;
             padding: 10px;
@@ -123,6 +124,7 @@
                     <th>Tipo</th>
                     <th>Entrada</th>
                     <th>Saída</th>
+                    <th>Custo</th>
                     <th>Ação</th>
                 </tr>
             </thead>
@@ -135,11 +137,16 @@
         <h2>Saída de Veículo</h2>
         <form id="delete-form">
             <label for="saida-placa">Placa do Veículo:</label>
-            <input type="text" id="saida-placa" pattern="[A-Z]{3}-\d{4}|[A-Z]{3}\d[A-Z]\d{2}">
+            <input type="text" id="saida-placa" pattern="[A-Z]{3}-\d{4}|[A-Z]{3}\d[A-Z]\d{2}" required>
+            <label for="valor-hora">Valor por Hora (R$):</label>
+            <input type="number" id="valor-hora" step="0.01" min="0" required>
             <button type="submit">Registrar Saída</button>
         </form>
+        <p id="custo-total">Valor Total a Pagar: R$ 0.00</p>
+    </div>
 
-        <!-- Formulário para Editar Cadastro de Veículo (Update) -->
+    <!-- Formulário para Editar Cadastro de Veículo (Update) -->
+    <div class="section">
         <h2>Editar Cadastro de Veículo</h2>
         <form id="update-form" style="display: none;">
             <input type="hidden" id="edit-placa">
@@ -158,29 +165,21 @@
 
     <!-- Função JavaScript para gerenciar o Sistema de Estacionamento -->
     <script>
-        // Limite de vagas (fixo)
         const limiteVagas = 10;
-
-        // Recupera os dados dos veículos armazenados no armazenamento local do navegador
         let veiculos = JSON.parse(localStorage.getItem('veiculos')) || [];
 
-        // Função para criar um novo registro de veículo
         document.getElementById('create-form').addEventListener('submit', function (e) {
             e.preventDefault();
             if (veiculos.length < limiteVagas) {
                 const placa = document.getElementById('placa').value;
                 const modelo = document.getElementById('modelo').value;
                 const tipo = document.getElementById('tipo').value;
-                const entradaHora = new Date().toLocaleString();
+                const entradaHora = new Date().toISOString(); // Use ISO string for consistency
 
-                // Verifica se a placa já está cadastrada
                 const veiculoExistente = veiculos.find(veiculo => veiculo.placa === placa && !veiculo.saidaHora);
                 if (!veiculoExistente) {
                     veiculos.push({ placa, modelo, tipo, entradaHora, saidaHora: '' });
-
-                    // Atualiza os dados no armazenamento local do navegador
                     localStorage.setItem('veiculos', JSON.stringify(veiculos));
-
                     updateVagasDisponiveis();
                     updateVeiculosList();
                     document.getElementById('placa').value = '';
@@ -193,27 +192,38 @@
             }
         });
 
-        // Função para registrar a saída de um veículo
         document.getElementById('delete-form').addEventListener('submit', function (e) {
             e.preventDefault();
             const placa = document.getElementById('saida-placa').value;
+            const valorHora = parseFloat(document.getElementById('valor-hora').value);
+            if (isNaN(valorHora) || valorHora < 0) {
+                alert('Valor por hora inválido.');
+                return;
+            }
+
             const veiculo = veiculos.find(veiculo => veiculo.placa === placa && !veiculo.saidaHora);
             if (veiculo) {
-                const saidaHora = new Date().toLocaleString();
+                const saidaHora = new Date().toISOString(); // Use ISO string for consistency
                 veiculo.saidaHora = saidaHora;
+                const valorTotal = calcularValorTotal(new Date(veiculo.entradaHora), new Date(saidaHora), valorHora);
+                document.getElementById('custo-total').textContent = `Valor Total a Pagar: R$ ${valorTotal.toFixed(2)}`;
 
-                // Atualiza os dados no armazenamento local do navegador
                 localStorage.setItem('veiculos', JSON.stringify(veiculos));
-
                 updateVagasDisponiveis();
                 updateVeiculosList();
                 document.getElementById('saida-placa').value = '';
+                document.getElementById('valor-hora').value = '';
             } else {
                 alert('Veículo não encontrado ou já saiu.');
             }
         });
 
-        // Função para preencher o formulário de edição com os dados do veículo
+        function calcularValorTotal(entrada, saida, valorPorHora) {
+            const duracaoMs = saida - entrada;
+            const duracaoHoras = Math.ceil(duracaoMs / (1000 * 60 * 60)); // Calcula a duração em horas arredondando para cima
+            return duracaoHoras * valorPorHora;
+        }
+
         function prepareUpdateForm(placa) {
             const veiculo = veiculos.find(veiculo => veiculo.placa === placa && !veiculo.saidaHora);
             if (veiculo) {
@@ -224,7 +234,6 @@
             }
         }
 
-        // Função para salvar as alterações nos dados de um veículo
         document.getElementById('update-form').addEventListener('submit', function (e) {
             e.preventDefault();
             const placa = document.getElementById('edit-placa').value;
@@ -234,39 +243,34 @@
             if (veiculo) {
                 veiculo.modelo = novoModelo;
                 veiculo.tipo = novoTipo;
-
-                // Atualiza os dados no armazenamento local do navegador
                 localStorage.setItem('veiculos', JSON.stringify(veiculos));
-
                 updateVeiculosList();
                 document.getElementById('update-form').style.display = 'none';
             }
         });
 
-        // Função para cancelar a edição de dados de um veículo
         document.getElementById('cancel-edit').addEventListener('click', function () {
             document.getElementById('update-form').style.display = 'none';
         });
 
-        // Função para excluir um veículo da lista
         function excluirVeiculo(placa) {
             const index = veiculos.findIndex(veiculo => veiculo.placa === placa && !veiculo.saidaHora);
             if (index !== -1) {
                 veiculos.splice(index, 1);
-
-                // Atualiza os dados no armazenamento local do navegador
                 localStorage.setItem('veiculos', JSON.stringify(veiculos));
-
                 updateVagasDisponiveis();
                 updateVeiculosList();
             }
         }
 
-        // Função para atualizar a lista de veículos estacionados
         function updateVeiculosList() {
             const veiculosList = document.getElementById('veiculos-list');
             veiculosList.innerHTML = '';
             veiculos.forEach(veiculo => {
+                const custo = veiculo.saidaHora 
+                    ? calcularValorTotal(new Date(veiculo.entradaHora), new Date(veiculo.saidaHora), 0).toFixed(2) 
+                    : 'Em andamento';
+                const custoExibido = custo === 'Em andamento' ? custo : 'R$ ' + custo;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${formatarPlaca(veiculo.placa)}</td>
@@ -274,6 +278,7 @@
                     <td>${veiculo.tipo}</td>
                     <td>${veiculo.entradaHora}</td>
                     <td>${veiculo.saidaHora || 'Em andamento'}</td>
+                    <td>${custoExibido}</td>
                     <td>
                         <button class="edit" onclick="prepareUpdateForm('${veiculo.placa}')">Editar</button>
                         <button class="delete" onclick="excluirVeiculo('${veiculo.placa}')">Excluir</button>
@@ -283,16 +288,13 @@
             });
         }
 
-        // Função para atualizar o número de vagas disponíveis
         function updateVagasDisponiveis() {
             document.getElementById('vagas-disponiveis').textContent = limiteVagas - veiculos.filter(veiculo => !veiculo.saidaHora).length;
         }
 
-        // Função para formatar a placa no formato correto
         function formatarPlaca(placa) {
             const placaFormatoAntigo = placa.match(/[A-Z]{3}-\d{4}/);
             const placaFormatoNovo = placa.match(/[A-Z]{3}\d[A-Z]\d{2}/);
-
             if (placaFormatoAntigo) {
                 return placaFormatoAntigo[0];
             } else if (placaFormatoNovo) {
@@ -302,7 +304,6 @@
             }
         }
 
-        // Inicializa a lista de veículos na página
         updateVagasDisponiveis();
         updateVeiculosList();
     </script>
