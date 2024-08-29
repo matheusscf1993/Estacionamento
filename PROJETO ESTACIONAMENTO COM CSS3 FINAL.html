@@ -5,66 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Estacionamento</title>
     <style>
-        /* Estilo para o corpo (body) */
         body {
             font-family: Arial, sans-serif;
-            background-color: #f0f0f0; /* Fundo cinza claro */
+            background-color: #f0f0f0;
             margin: 0;
             padding: 0;
         }
-
-        /* Estilo para o cabeçalho (h1) */
         h1 {
-            color: #3498db; /* Azul */
+            color: #3498db;
             text-align: center;
             padding: 20px 0;
             margin: 0;
         }
-
-        /* Estilo para os contêineres de seção (div) */
         .section {
-            background-color: #ffffff; /* Fundo branco */
+            background-color: #ffffff;
             border-radius: 5px;
             padding: 20px;
             margin: 20px auto;
             max-width: 800px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-
-        /* Estilo para os títulos das seções (h2) */
         h2 {
-            color: #e74c3c; /* Vermelho */
+            color: #e74c3c;
             margin-top: 0;
         }
-
-        /* Estilo para as tabelas */
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
-
         th, td {
             padding: 10px;
             border-bottom: 1px solid #ddd;
             text-align: left;
         }
-
         th {
-            background-color: #95a5a6; /* Cinza */
+            background-color: #95a5a6;
             color: white;
         }
-
-        /* Estilo para os formulários */
         form {
             margin-top: 20px;
         }
-
         label {
             display: block;
             margin-bottom: 5px;
         }
-
         input[type="text"],
         input[type="number"],
         select {
@@ -74,19 +59,16 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
-
-        /* Estilo para os botões */
         button {
-            background-color: #2ecc71; /* Verde */
+            background-color: #2ecc71;
             color: white;
             border: none;
             padding: 10px 20px;
             cursor: pointer;
             border-radius: 5px;
         }
-
         button.edit, button.delete {
-            background-color: #f1c40f; /* Amarelo */
+            background-color: #f1c40f;
             margin-right: 5px;
         }
     </style>
@@ -95,7 +77,6 @@
     <h1>Sistema de Estacionamento</h1>
 
     <div class="section">
-        <!-- Formulário para Cadastro de Veículo (Create) -->
         <h2>Cadastro de Veículo</h2>
         <p>Vagas Disponíveis: <span id="vagas-disponiveis">10</span></p>
         <form id="create-form">
@@ -114,7 +95,6 @@
     </div>
 
     <div class="section">
-        <!-- Lista de Veículos Estacionados (Read) -->
         <h2>Veículos Estacionados</h2>
         <table id="veiculos-table">
             <thead>
@@ -133,7 +113,6 @@
     </div>
 
     <div class="section">
-        <!-- Formulário para Saída de Veículo (Delete) -->
         <h2>Saída de Veículo</h2>
         <form id="delete-form">
             <label for="saida-placa">Placa do Veículo:</label>
@@ -145,7 +124,6 @@
         <p id="custo-total">Valor Total a Pagar: R$ 0.00</p>
     </div>
 
-    <!-- Formulário para Editar Cadastro de Veículo (Update) -->
     <div class="section">
         <h2>Editar Cadastro de Veículo</h2>
         <form id="update-form" style="display: none;">
@@ -163,7 +141,6 @@
         </form>
     </div>
 
-    <!-- Função JavaScript para gerenciar o Sistema de Estacionamento -->
     <script>
         const limiteVagas = 10;
         let veiculos = JSON.parse(localStorage.getItem('veiculos')) || [];
@@ -178,7 +155,7 @@
 
                 const veiculoExistente = veiculos.find(veiculo => veiculo.placa === placa && !veiculo.saidaHora);
                 if (!veiculoExistente) {
-                    veiculos.push({ placa, modelo, tipo, entradaHora, saidaHora: '' });
+                    veiculos.push({ placa, modelo, tipo, entradaHora, saidaHora: '', custo: 0 });
                     localStorage.setItem('veiculos', JSON.stringify(veiculos));
                     updateVagasDisponiveis();
                     updateVeiculosList();
@@ -205,8 +182,7 @@
             if (veiculo) {
                 const saidaHora = new Date().toISOString(); // Use ISO string for consistency
                 veiculo.saidaHora = saidaHora;
-                const valorTotal = calcularValorTotal(new Date(veiculo.entradaHora), new Date(saidaHora), valorHora);
-                document.getElementById('custo-total').textContent = `Valor Total a Pagar: R$ ${valorTotal.toFixed(2)}`;
+                veiculo.custo = calcularValorTotal(new Date(veiculo.entradaHora), new Date(saidaHora), valorHora);
                 localStorage.setItem('veiculos', JSON.stringify(veiculos));
                 updateVagasDisponiveis();
                 updateVeiculosList();
@@ -276,10 +252,7 @@
             const veiculosList = document.getElementById('veiculos-list');
             veiculosList.innerHTML = '';
             veiculos.forEach(veiculo => {
-                const custo = veiculo.saidaHora 
-                    ? calcularValorTotal(new Date(veiculo.entradaHora), new Date(veiculo.saidaHora), parseFloat(document.getElementById('valor-hora').value || '0')).toFixed(2) 
-                    : 'Em andamento';
-                const custoExibido = custo === 'Em andamento' ? custo : 'R$ ' + custo;
+                const custo = veiculo.saidaHora ? `R$ ${veiculo.custo.toFixed(2)}` : 'Em andamento';
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${formatarPlaca(veiculo.placa)}</td>
@@ -287,12 +260,11 @@
                     <td>${veiculo.tipo}</td>
                     <td>${formatarDataHora(veiculo.entradaHora)}</td>
                     <td>${veiculo.saidaHora ? formatarDataHora(veiculo.saidaHora) : 'Em andamento'}</td>
-                    <td>${veiculo.saidaHora ? 'R$ ' + calcularValorTotal(new Date(veiculo.entradaHora), new Date(veiculo.saidaHora), parseFloat(document.getElementById('valor-hora').value || '0')).toFixed(2) : 'Em andamento'}</td>
+                    <td>${custo}</td>
                     <td>
                         <button class="edit" onclick="prepareUpdateForm('${veiculo.placa}')">Editar</button>
                         <button class="delete" onclick="excluirVeiculo('${veiculo.placa}')">Excluir</button>
-                    </td>
-                `;
+                    </td>`;
                 veiculosList.appendChild(tr);
             });
         }
