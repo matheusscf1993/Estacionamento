@@ -207,7 +207,6 @@
                 veiculo.saidaHora = saidaHora;
                 const valorTotal = calcularValorTotal(new Date(veiculo.entradaHora), new Date(saidaHora), valorHora);
                 document.getElementById('custo-total').textContent = `Valor Total a Pagar: R$ ${valorTotal.toFixed(2)}`;
-
                 localStorage.setItem('veiculos', JSON.stringify(veiculos));
                 updateVagasDisponiveis();
                 updateVeiculosList();
@@ -222,6 +221,16 @@
             const duracaoMs = saida - entrada;
             const duracaoHoras = Math.ceil(duracaoMs / (1000 * 60 * 60)); // Calcula a duração em horas arredondando para cima
             return duracaoHoras * valorPorHora;
+        }
+
+        function formatarDataHora(dataHoraISO) {
+            const data = new Date(dataHoraISO);
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const ano = data.getFullYear();
+            const hora = String(data.getHours()).padStart(2, '0');
+            const minuto = String(data.getMinutes()).padStart(2, '0');
+            return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
         }
 
         function prepareUpdateForm(placa) {
@@ -268,7 +277,7 @@
             veiculosList.innerHTML = '';
             veiculos.forEach(veiculo => {
                 const custo = veiculo.saidaHora 
-                    ? calcularValorTotal(new Date(veiculo.entradaHora), new Date(veiculo.saidaHora), 0).toFixed(2) 
+                    ? calcularValorTotal(new Date(veiculo.entradaHora), new Date(veiculo.saidaHora), parseFloat(document.getElementById('valor-hora').value || '0')).toFixed(2) 
                     : 'Em andamento';
                 const custoExibido = custo === 'Em andamento' ? custo : 'R$ ' + custo;
                 const tr = document.createElement('tr');
@@ -276,9 +285,9 @@
                     <td>${formatarPlaca(veiculo.placa)}</td>
                     <td>${veiculo.modelo}</td>
                     <td>${veiculo.tipo}</td>
-                    <td>${veiculo.entradaHora}</td>
-                    <td>${veiculo.saidaHora || 'Em andamento'}</td>
-                    <td>${custoExibido}</td>
+                    <td>${formatarDataHora(veiculo.entradaHora)}</td>
+                    <td>${veiculo.saidaHora ? formatarDataHora(veiculo.saidaHora) : 'Em andamento'}</td>
+                    <td>${veiculo.saidaHora ? 'R$ ' + calcularValorTotal(new Date(veiculo.entradaHora), new Date(veiculo.saidaHora), parseFloat(document.getElementById('valor-hora').value || '0')).toFixed(2) : 'Em andamento'}</td>
                     <td>
                         <button class="edit" onclick="prepareUpdateForm('${veiculo.placa}')">Editar</button>
                         <button class="delete" onclick="excluirVeiculo('${veiculo.placa}')">Excluir</button>
